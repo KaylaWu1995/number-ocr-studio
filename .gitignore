@@ -1,0 +1,14 @@
+node_modules/
+config.local.json
+*.log
+.DS_Store
+
+dist/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local screenshots may contain user data; never publish by default.
+docs/*.png

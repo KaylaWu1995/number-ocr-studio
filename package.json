@@ -1,0 +1,16 @@
+{
+  "name": "number-ocr-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "号码整理工具：文本/图片(OCR) → 固定书写格式，支持全倒、3字X、批量=N、一键全部复制",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "build:pages": "node scripts/build-pages.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

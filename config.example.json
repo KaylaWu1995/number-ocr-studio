@@ -1,0 +1,6 @@
+{
+  "provider": "dashscope",
+  "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "model": "qwen-vl-ocr-latest",
+  "apiKey": ""
+}

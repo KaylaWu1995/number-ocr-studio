@@ -1,0 +1,25 @@
+{
+  "name": "号码整理工具",
+  "short_name": "号码整理",
+  "description": "把文本或图片（手写数字）整理成固定书写格式，支持全倒、3字X、批量=N，可编辑并导出 TXT",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#2563eb",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>号码整理工具</title>
+<meta name="description" content="把文本或图片（手写数字）整理成固定书写格式，支持全倒、3字X、批量=N，可编辑并一键全部复制">
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- 图标精灵：按钮里用 <svg class="ico"><use href="#ico-xxx"/></svg> 引用，零依赖 -->
+<svg class="ico-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ico-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></symbol>
+  <symbol id="ico-clear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="ico-select-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="ico-group" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="6.5" rx="1.5"/><rect x="3" y="14.5" width="18" height="6.5" rx="1.5"/></symbol>
+  <symbol id="ico-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></symbol>
+  <symbol id="ico-threex" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+  <symbol id="ico-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="ico-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="ico-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+  <symbol id="ico-scissors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></symbol>
+  <symbol id="ico-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">#</span>
+    <div>
+      <h1>号码整理工具</h1>
+    </div>
+  </div>
+  <span class="pill" id="ocrStatus" title="OCR 配置状态">OCR 未配置</span>
+  <!-- 规则说明 / 设置：弱化成图标，靠导航栏最下方 -->
+  <div class="topbar-icons">
+    <button class="btn ghost icon" id="btnHelp" title="规则说明" aria-label="规则说明">?</button>
+    <button class="btn ghost icon" id="btnSettings" title="设置" aria-label="设置">&#x2699;&#xFE0E;</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- 上传或粘贴图片后出现：原图点选与 =N 标注 -->
+  <section class="panel hidden" id="panelImage" aria-label="图片点选">
+    <div class="image-panel-head">
+      <h2><span class="step">1</span> 图片</h2>
+      <div class="image-panel-actions">
+        <button class="btn tiny" id="btnReplaceImage">上传图片</button>
+        <button class="btn tiny ghost" id="btnCloseImage" aria-label="收起图片栏">✕</button>
+      </div>
+    </div>
+    <div class="image-tabs hidden" id="imageTabs" aria-label="选择图片"></div>
+    <div class="image-workspace" id="imageWorkspace"></div>
+  </section>
+
+  <!-- ============================ 左：输入 ============================ -->
+  <section class="panel" id="panelInput">
+    <div class="panel-body">
+      <div class="split">
+        <div class="dropzone" id="dropzone">
+          <!-- 两层：底下的高亮层负责把不合规的号码标红，上面的文本域只管输入 -->
+          <div class="input-editor">
+            <div class="editor-highlight" id="inputHighlight" aria-hidden="true"></div>
+            <textarea id="input" spellcheck="false"
+              placeholder="在这里粘贴文本，或把图片拖进来 / 直接 Ctrl+V 粘贴截图"></textarea>
+          </div>
+          <div class="drop-hint" id="dropHint">松开鼠标即可识别图片</div>
+        </div>
+
+        <!-- 标题 + 操作区合成一竖列：输入框就能占满整个面板高度 -->
+        <div class="side-col">
+          <div class="panel-head">
+            <h2><span class="step" id="inputStep">1</span> <span id="inputTitle">输入</span></h2>
+            <div class="panel-head-actions">
+              <span class="pill" id="inputCount" title="行数只算非空行；连续非空行算一组，以空行分隔，与「选择组」一致">0 行 · 0 组</span>
+            </div>
+          </div>
+
+          <aside class="actions">
+            <!-- 组 1：撤销 / 清空，靠上 -->
+            <div class="act-group">
+              <button class="btn tiny" id="btnUndoInput" title="撤销上一步"><svg class="ico" aria-hidden="true"><use href="#ico-undo"/></svg>撤销</button>
+              <button class="btn tiny" id="btnClearInput"><svg class="ico" aria-hidden="true"><use href="#ico-clear"/></svg>清空</button>
+            </div>
+
+            <!-- 组 2：选择操作，靠上 -->
+            <div class="act-group">
+              <button class="btn tiny" id="btnSelectAllInput"><svg class="ico" aria-hidden="true"><use href="#ico-select-all"/></svg>全选</button>
+              <button class="btn tiny" id="btnSelectGroupInput" title="以空行为界，一整组一起选中；再点一次往下多选一组"><svg class="ico" aria-hidden="true"><use href="#ico-group"/></svg>选择组</button>
+            </div>
+
+            <!-- 组 3：其余功能，自动靠下；主操作（上传图片）放在最下方，和右侧「全部复制」对齐 -->
+            <div class="act-group act-group-main">
+              <button class="btn tiny ghost" id="btnFormat" title="把左侧输入框的内容就地整理成合规格式：每行一个号码，不合规的过滤掉"><svg class="ico" aria-hidden="true"><use href="#ico-filter"/></svg>格式整理</button>
+              <button class="btn tiny ghost" id="btnReverse"><svg class="ico" aria-hidden="true"><use href="#ico-shuffle"/></svg>全倒</button>
+              <button class="btn tiny ghost" id="btnThreeX"><svg class="ico" aria-hidden="true"><use href="#ico-threex"/></svg>3字X</button>
+              <button class="btn primary" id="btnCopyAllInput" title="原样复制左侧输入框里的全部内容"><svg class="ico" aria-hidden="true"><use href="#ico-copy"/></svg>全部复制</button>
+              <span id="ocrInfo" class="small muted"></span>
+              <button class="btn primary" id="btnOcr"><svg class="ico" aria-hidden="true"><use href="#ico-upload"/></svg><span id="ocrBtnLabel">上传图片</span></button>
+              <input type="file" id="fileInput" accept="image/*" multiple hidden>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div id="skipNotice" class="notice hidden"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 右：输出 ============================ -->
+  <section class="panel" id="panelOutput">
+    <div class="panel-body output-body">
+      <div class="split">
+        <div class="editor-wrap">
+          <div class="editor-highlight" id="editorHighlight" aria-hidden="true"></div>
+          <textarea id="output" wrap="off" spellcheck="false" autocomplete="off"
+            placeholder="这里每行一组号码，可以直接编辑/粘贴/删除。"></textarea>
+        </div>
+
+        <!-- 标题 + 操作区合成一竖列：输出框就能占满整个面板高度 -->
+        <div class="side-col">
+          <div class="panel-head">
+            <h2><span class="step" id="outputStep">2</span> <span id="outputTitle">输出</span></h2>
+            <div class="panel-head-actions">
+              <span class="pill" id="rowCount" title="行数只算非空行；连续非空行算一组，以空行分隔，与「选择组」一致">0 行 · 0 组</span>
+            </div>
+          </div>
+
+          <aside class="actions">
+            <!-- 组 1：撤销 / 清空，靠上 -->
+            <div class="act-group">
+              <button class="btn tiny" id="btnUndo" title="撤销上一步"><svg class="ico" aria-hidden="true"><use href="#ico-undo"/></svg>撤销</button>
+              <button class="btn tiny" id="btnClearOutput"><svg class="ico" aria-hidden="true"><use href="#ico-clear"/></svg>清空</button>
+            </div>
+
+            <!-- 组 2：选择，靠上 -->
+            <div class="act-group">
+              <button class="btn tiny" id="btnSelectAllOutput"><svg class="ico" aria-hidden="true"><use href="#ico-select-all"/></svg>全选</button>
+              <button class="btn tiny" id="btnSelectGroupOutput" title="以空行为界，一整组一起选中；再点一次往下多选一组"><svg class="ico" aria-hidden="true"><use href="#ico-group"/></svg>选择组</button>
+            </div>
+
+            <!-- 组 3：其余功能，自动靠下 -->
+            <div class="act-group act-group-main">
+              <button class="btn tiny ghost" id="btnSetSuffix"><svg class="ico" aria-hidden="true"><use href="#ico-tag"/></svg>批量添加 =N</button>
+              <button class="btn tiny ghost" id="btnClearSuffix"><svg class="ico" aria-hidden="true"><use href="#ico-scissors"/></svg>清除后缀</button>
+              <button class="btn tiny ghost" id="btnDedupeAll"><svg class="ico" aria-hidden="true"><use href="#ico-filter"/></svg>去重</button>
+              <button class="btn primary" id="btnCopyAll"><svg class="ico" aria-hidden="true"><use href="#ico-copy"/></svg>全部复制</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="issue-list" id="issueList"></div>
+    </div>
+
+    <div class="panel-foot">
+      <div class="status" id="statusBar"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- ============================ 通用弹窗 ============================ -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal" id="modalBox" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">标题</h3>
+      <button class="btn tiny ghost" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script src="selection.js"></script>
+<script src="ocr-client.js"></script>
+<script src="app.js"></script>
+<script src="mobile.js"></script>
+<script src="updates.js"></script>
+</body>
+</html>
