@@ -46,6 +46,20 @@
   }
   var viewportFrame = 0;
   var settleUntil = 0;
+  function revealModalField() {
+    var field = document.activeElement;
+    if (!field || !field.matches('input, textarea, select, [contenteditable="true"]')) return;
+    var scroller = field.closest('.modal-body');
+    if (!scroller) return;
+    var bounds = scroller.getBoundingClientRect();
+    var rect = field.getBoundingClientRect();
+    if (bounds.height <= 0) return;
+    // 只滚动弹窗正文，保持底部按钮和页面位置稳定。
+    if (rect.top < bounds.top + 8) scroller.scrollTop += rect.top - bounds.top - 8;
+    else if (rect.bottom > bounds.bottom - 8) {
+      scroller.scrollTop += Math.min(rect.bottom - bounds.bottom + 8, rect.top - bounds.top - 8);
+    }
+  }
   function measureViewport() {
     if (!media.matches) return;
     var v = window.visualViewport;
@@ -56,12 +70,15 @@
     var top = v ? Math.max(0, v.offsetTop) : 0;
     var heightValue = Math.floor(height) + 'px';
     var topValue = Math.round(top) + 'px';
+    var changed = body.style.getPropertyValue('--mobile-height') !== heightValue ||
+      body.style.getPropertyValue('--mobile-top') !== topValue;
     if (body.style.getPropertyValue('--mobile-height') !== heightValue) {
       body.style.setProperty('--mobile-height', heightValue);
     }
     if (body.style.getPropertyValue('--mobile-top') !== topValue) {
       body.style.setProperty('--mobile-top', topValue);
     }
+    if (changed) revealModalField();
   }
   function viewportTick(now) {
     viewportFrame = 0;
@@ -170,6 +187,7 @@
   var modal = document.getElementById('modalBackdrop');
   new MutationObserver(function () {
     if (!media.matches) return;
+    viewport();
     if (active !== 'image' && modal.classList.contains('hidden') && body.classList.contains('mobile-editing')) {
       document.getElementById(active).focus({ preventScroll: true });
     }
@@ -181,6 +199,9 @@
   window.addEventListener('scroll', viewport, { passive: true });
   // Includes suffix dialogs and keyboard dismissal via the system's Done button.
   document.addEventListener('focusin', viewport);
+  document.addEventListener('focusin', function () {
+    if (media.matches) requestAnimationFrame(revealModalField);
+  });
   document.addEventListener('focusout', viewport);
   document.addEventListener('visibilitychange', viewport);
   if (window.visualViewport) {

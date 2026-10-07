@@ -770,7 +770,7 @@ textarea#input::placeholder { font-size: var(--placeholder-font); color: var(--m
     overflow: hidden;
     --editor-font: 23px;
     display: grid;
-    grid-template-columns: 66px minmax(0, 1fr) 94px;
+    grid-template-columns: 76px minmax(0, 1fr) 100px;
     grid-template-rows: auto minmax(0, 1fr);
   }
   body.mobile-large { --editor-font: 30px; }
@@ -794,12 +794,12 @@ textarea#input::placeholder { font-size: var(--placeholder-font); color: var(--m
   }
   .mobile-nav button {
     min-height: 44px; border: 0; border-radius: 8px; padding: 6px 2px;
-    background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
+    background: var(--bg); color: var(--text); font: inherit; font-size: 21px;
   }
   .mobile-nav [data-pane] { flex: none; }
-  .mobile-pane-label { display: flex; align-items: center; justify-content: center; gap: 3px; }
+  .mobile-pane-label { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px; }
   .mobile-pane-icon { width: 16px; height: 16px; flex: none; }
-  .mobile-nav small { display: block; font-size: 11px; color: var(--muted); }
+  .mobile-nav small { display: block; font-size: 16.5px; color: var(--muted); }
   .mobile-nav [aria-pressed="true"] { background: var(--ok-bg); color: var(--primary); font-weight: 600; }
   #mobileDone { display: none; color: var(--primary); }
   .mobile-editing #mobileDone { display: block; }
@@ -832,14 +832,29 @@ textarea#input::placeholder { font-size: var(--placeholder-font); color: var(--m
   }
   .mobile-primary, .mobile-secondary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; flex: none; }
   .mobile-secondary { border-top: 1px solid var(--line); padding-top: 10px; }
-  .mobile-actions .btn { min-height: 44px; padding: 5px 3px; font-size: 13px; white-space: nowrap; }
+  .mobile-actions .btn { min-height: 44px; padding: 5px 3px; font-size: 19.5px; white-space: normal; overflow-wrap: anywhere; }
   .mobile-primary .btn { border-color: var(--primary); color: var(--primary); }
   .mobile-primary .btn:last-child { background: var(--primary); color: white; }
-  .modal-backdrop { top: var(--mobile-top, 0px); bottom: auto; height: var(--mobile-height, 100dvh); padding: 10px; }
+  .modal-backdrop {
+    top: var(--mobile-top, 0px); bottom: auto;
+    height: var(--mobile-height, 100dvh); padding: 10px;
+    grid-template-rows: minmax(0, 1fr); overflow: hidden;
+  }
   .field input, .field select, .field textarea { font-size: 16px; }
 }
 @media (max-width: 860px) {
-  .modal { max-height: 100%; }
+  .modal, .modal.fill {
+    min-height: 0; min-width: 0;
+    max-height: calc(var(--mobile-height, 100dvh) - 20px);
+    overflow: hidden;
+  }
+  .modal-head { flex: 0 0 auto; }
+  .modal-body { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+  .modal-foot {
+    flex: 0 0 auto; max-height: 40%; overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
   .toasts {
     grid-column: 1 / -1; grid-row: 1;
     position: relative; inset: auto; max-height: 64px; overflow-y: auto; gap: 0;
@@ -881,7 +896,7 @@ textarea#input::placeholder { font-size: var(--placeholder-font); color: var(--m
 @media (max-width: 860px) {
   body.image-workspace-active .mobile-rail .topbar { display: none; }
   /* 图片页没有右侧文本操作，将空出的宽度交给图片。 */
-  body.image-workspace-active[data-mobile-pane="image"] { grid-template-columns: 66px minmax(0, 1fr); }
+  body.image-workspace-active[data-mobile-pane="image"] { grid-template-columns: 76px minmax(0, 1fr); }
   .image-workspace-active .mobile-actions:empty { display: none; }
   .image-workspace-active textarea#input,
   .image-workspace-active .input-editor .editor-highlight,
@@ -891,4 +906,23 @@ textarea#input::placeholder { font-size: var(--placeholder-font); color: var(--m
   #panelImage .crop-annotation { gap: 5px; }
   #panelImage .crop-annotation input, #panelImage .crop-annotation #cropApplySuffix { min-height: 44px; }
   #panelImage .crop-annotation-legend { max-height: 64px; overflow-y: auto; }
+}
+
+/* 移动端按钮字号为原来的 1.5 倍，允许长文案换行。 */
+@media (max-width: 860px) {
+  .btn { font-size: 21px; white-space: normal; }
+  .btn.tiny { font-size: 19.5px; }
+  .btn.icon { font-size: 22.5px; }
+  .act-group > .btn, .act-group > .btn.tiny { font-size: 18px; }
+  .seg-btn { font-size: 19.5px; }
+  .crop-tools .seg-btn { font-size: 24px; }
+  .status button { font-size: 27px; }
+  .issue-item, .err-item .why { font-size: 18px; }
+  .err-item { font-size: 19.5px; }
+  .image-panel-head, .image-panel-actions { flex-wrap: wrap; }
+  .modal-foot { flex-wrap: wrap; }
+}
+@media (max-width: 520px) {
+  .btn { font-size: 19.5px; }
+  #panelImage .crop-annotation { grid-template-columns: minmax(0, 1fr); }
 }
