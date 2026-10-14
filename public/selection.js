@@ -36,15 +36,50 @@
     var data = JSON.parse(String(raw).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
     if (!data || !Array.isArray(data.groups)) throw new Error('模型未返回号码位置，请使用框选或换用支持位置识别的模型');
     var seen = new Set(), invalidPositions = 0, validNumbers = 0;
+    function number(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+      if (typeof value === 'string' && value.trim() !== '') {
+        var parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : NaN;
+      }
+      return NaN;
+    }
+    function boxFor(group) {
+      var source = group.box || group.bbox || group.bbox_2d;
+      var box;
+      if (Array.isArray(source) && source.length >= 4) {
+        box = source.slice(0, 4).map(number);
+        // Some visual models return [centerX, centerY, width, height, confidence].
+        if (source.length >= 5 && box.every(Number.isFinite) && (box[2] <= box[0] || box[3] <= box[1]) && box[2] > 0 && box[3] > 0) {
+          box = [box[0] - box[2] / 2, box[1] - box[3] / 2, box[0] + box[2] / 2, box[1] + box[3] / 2];
+        }
+      } else if (source && typeof source === 'object') {
+        if ('x1' in source || 'left' in source) {
+          box = [number(source.x1 ?? source.left), number(source.y1 ?? source.top),
+            number(source.x2 ?? source.right), number(source.y2 ?? source.bottom)];
+        } else if ('x' in source && 'y' in source && 'width' in source && 'height' in source) {
+          box = [number(source.x), number(source.y), number(source.x) + number(source.width), number(source.y) + number(source.height)];
+        }
+      } else if ('x' in group && 'y' in group && 'width' in group && 'height' in group) {
+        box = [number(group.x), number(group.y), number(group.x) + number(group.width), number(group.y) + number(group.height)];
+      }
+      if (!box || !box.every(Number.isFinite)) return null;
+      if (dimensions) {
+        var fitsPixels = box[0] >= 0 && box[1] >= 0 && box[2] <= dimensions.width && box[3] <= dimensions.height;
+        var fitsNormalized = box.every(function (n) { return n >= 0 && n <= 1000; });
+        // The prompt asks for pixels, but Qwen visual models can still return their native 0-1000 coordinates.
+        if (fitsPixels) box = box.map(function (n, i) { return n * 1000 / (i % 2 ? dimensions.height : dimensions.width); });
+        else if (!fitsNormalized) return null;
+      }
+      return box;
+    }
     var groups = [];
     groups = data.groups.slice(0, 2000).flatMap(function (g) {
       if (!g || typeof g.text !== 'string') return [];
-      var text = core.normalizeChars(g.text).trim(), b = g.box;
+      var text = core.normalizeChars(g.text).trim(), b;
       if (!core.validateNumber(text).ok) return [];
       validNumbers++;
-      if (dimensions && Array.isArray(b) && b.length === 4) {
-        b = b.map(function (n, i) { return typeof n === 'number' ? n * 1000 / (i % 2 ? dimensions.height : dimensions.width) : n; });
-      }
+      b = boxFor(g);
       if (!Array.isArray(b) || b.length !== 4 ||
           !b.every(function (n) { return typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1000; }) ||
           b[2] <= b[0] || b[3] <= b[1]) { invalidPositions++; return []; }
@@ -54,7 +89,7 @@
       return [{ text: text, box: b }];
     });
     if (!groups.length && (invalidPositions || data.groups.length)) {
-      throw new Error(validNumbers ? '已识别到号码，但位置数据无效；请重启本地服务以启用视觉定位' : '模型把号码与备注混在一起，未返回独立号码；请重启本地服务以启用视觉定位');
+      throw new Error(validNumbers ? '已识别到号码，但模型返回的位置格式无法使用；请重试定位' : '模型把号码与备注混在一起，未返回独立号码；请重试定位');
     }
     return groups;
   }

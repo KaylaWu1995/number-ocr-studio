@@ -61,7 +61,22 @@ test('实图号码与干扰信息混合：保留12组、过滤标题金额括号
   assert.ok(out.at(-1).box[3] < 1000);
 });
 
-test('有号码但坐标格式错误不能伪装为没有合规号码', () => {
-  assert.throws(() => parseRegions(JSON.stringify({ groups: [{ text: '1439', box: [262,226,61,253,90] }] })), /位置数据无效/);
+test('兼容视觉模型的五值中心框、bbox_2d、字符串和归一化坐标', () => {
+  const groups = [
+    { text: '1439', box: [262, 226, 61, 253, 90] },
+    { text: '1458', bbox_2d: ['100', '200', '300', '400'] },
+    { text: '5839', bbox: { x: 20, y: 30, width: 40, height: 50 } }
+  ];
+  const out = parseRegions(JSON.stringify({ groups }));
+  assert.deepEqual(out.map(g => g.text), ['1439', '1458', '5839']);
+  assert.deepEqual(out[0].box, [231.5, 99.5, 292.5, 352.5]);
+  assert.deepEqual(out[2].box, [20, 30, 60, 80]);
+
+  const normalized = parseRegions(JSON.stringify({ groups: [{ text: '0469', box: [600, 700, 800, 900] }] }), { width: 400, height: 600 });
+  assert.deepEqual(normalized[0].box, [600, 700, 800, 900]);
+});
+
+test('有号码但无法解释的坐标不能伪装为没有合规号码', () => {
+  assert.throws(() => parseRegions(JSON.stringify({ groups: [{ text: '1439', box: [1, 2, 3] }] })), /位置格式无法使用/);
   assert.throws(() => parseRegions(JSON.stringify({ groups: [{ text: '1439 全倒各2角', x: 528, y: 168, width: 250, height: 71 }] })), /备注/);
 });
