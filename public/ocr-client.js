@@ -63,6 +63,7 @@ function endpointFor(cfg) {
 }
 
 function buildRequest(cfg, imageDataUrl, prompt) {
+  const minPixels = /^qwen3-vl(?:-|$)/i.test(cfg.model) ? 256 * 256 : MIN_PIXELS;
   if (cfg.provider === 'dashscope-native') {
     return {
       model: cfg.model,
@@ -72,7 +73,7 @@ function buildRequest(cfg, imageDataUrl, prompt) {
           content: [
             {
               image: imageDataUrl,
-              min_pixels: MIN_PIXELS,
+              min_pixels: minPixels,
               max_pixels: MAX_PIXELS,
               enable_rotate: true // 拍歪的照片自动转正
             },
@@ -91,7 +92,7 @@ function buildRequest(cfg, imageDataUrl, prompt) {
         {
           type: 'image_url',
           image_url: { url: imageDataUrl },
-          min_pixels: MIN_PIXELS,
+          min_pixels: minPixels,
           max_pixels: MAX_PIXELS
         },
         { type: 'text', text: prompt }
@@ -124,7 +125,18 @@ async function call(cfg, image, prompt, signal) {
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.apiKey },
     body: JSON.stringify(buildRequest(cfg, image, prompt || cfg.ocrPrompt || OCR_PROMPT))
   });
-  if (!response.ok) throw new Error('OCR 接口返回 ' + response.status + '，请检查自己的密钥、地址、模型和额度');
+  if (!response.ok) {
+    let failure = {};
+    try { failure = await response.json(); } catch (_) { /* 非 JSON 错误保留 HTTP 状态 */ }
+    const detail = failure.error && typeof failure.error === 'object' ? failure.error : failure;
+    const code = typeof detail.code === 'string' ? detail.code : '';
+    const message = typeof detail.message === 'string' ? detail.message : '';
+    if (code === 'model_not_found' || /model\s+(?:does\s+not|not)\s+exist/i.test(message)) {
+      throw new Error('OCR 接口返回 ' + response.status + '：当前接口或业务空间无法调用模型「' + cfg.model + '」。请在服务商控制台确认该模型的可用名称和配套调用地址');
+    }
+    const safeDetail = (code + (message ? '：' + message : '')).replaceAll(cfg.apiKey, '[密钥已隐藏]').replace(/\bsk-[A-Za-z0-9_.-]+/g, '[密钥已隐藏]').slice(0, 300);
+    throw new Error('OCR 接口返回 ' + response.status + (safeDetail ? '（' + safeDetail + '）' : '') + '，请核对接口配置');
+  }
   const data = await response.json();
   if (data.error || (data.code && !data.output && !data.choices)) throw new Error('OCR 服务返回错误，请检查模型与配置');
   return { text: extractText(cfg, data), usage: data.usage || null };

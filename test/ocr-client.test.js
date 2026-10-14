@@ -48,3 +48,38 @@ test('legacy server never exposes shared config or performs paid OCR', async () 
     }
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+test('模型不存在时说明模型与业务空间问题，兼容两种服务商错误格式', async () => {
+  for (const body of [{error:{code:'model_not_found',message:'Model not exist.'}}, {code:'InvalidParameter',message:'Model not exist.'}]) {
+    const c = client(async () => new Response(JSON.stringify(body),{status:404}));
+    await c.request('/api/config',post({apiKey:'test-only-secret'}));
+    const data = await (await c.request('/api/ocr',post({image:'test'}))).json();
+    assert.match(data.error,/404.*业务空间.*qwen-vl-ocr-latest/);
+    assert.doesNotMatch(data.error,/额度|test-only-secret/);
+  }
+});
+
+test('其他接口失败保留错误原因并隐藏密钥，非JSON响应保留HTTP状态', async () => {
+  for (const response of [new Response(JSON.stringify({error:{code:'invalid_api_key',message:'Invalid test-only-secret'}}),{status:401}), new Response('Not found',{status:404})]) {
+    const c=client(async () => response);
+    await c.request('/api/config',post({apiKey:'test-only-secret'}));
+    const data=await (await c.request('/api/ocr',post({image:'test'}))).json();
+    assert.match(data.error,/OCR 接口返回 (401|404)/);
+    assert.doesNotMatch(data.error,/test-only-secret/);
+    if(response.status===401) assert.match(data.error,/invalid_api_key/);
+  }
+});
+
+test('Qwen3 VL 图片请求使用服务商要求的最小像素，其他模型保留原阈值', async () => {
+  for (const provider of ['dashscope','dashscope-native']) {
+    for (const [model,minPixels] of [['qwen3-vl-plus',65536],['qwen3-vl-flash',65536],['qwen-vl-ocr-2025-11-20',4096]]) {
+      let sent;
+      const c=client(async (url,opts) => {sent=JSON.parse(opts.body);return new Response(JSON.stringify(provider==='dashscope-native' ? {output:{choices:[{message:{content:[{text:'1234'}]}}]}} : {choices:[{message:{content:'1234'}}]}));});
+      await c.request('/api/config',post({provider,model,apiKey:'test-only-secret'}));
+      const result=await (await c.request('/api/ocr',post({image:'test'}))).json();
+      assert.equal(result.ok,true);
+      const image=provider==='dashscope-native' ? sent.input.messages[0].content[0] : sent.messages[0].content[0];
+      assert.equal(image.min_pixels,minPixels);
+    }
+  }
+});
