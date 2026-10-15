@@ -117,7 +117,7 @@
       // Four handwritten characters are normally at most about three times as wide
       // as their ink height (three characters are narrower). Keep the reliable left
       // edge and trim only the right edge where =N and notes are commonly included.
-      var maxAspect = region.text.length === 3 ? 2.2 : 2.7;
+      var maxAspect = region.text.length === 3 ? 2.6 : 3.35;
       var aspectWidth = targetHeight * scaleY * maxAspect / scaleX;
       var targetWidth = Math.max(width * 0.55, Math.min(width, aspectWidth));
       if (targetHeight >= height - 0.01 && targetWidth >= width - 0.01) return region;

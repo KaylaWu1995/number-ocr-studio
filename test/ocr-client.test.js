@@ -42,9 +42,9 @@ test('region OCR sends only user credential to configured host, parses dimension
 test('Qwen3 VL 定位框保持模型的 0-1000 坐标，不按竖图高度重复压缩', async () => {
   let sent;
   const groups = [
-    { text: '6714', box: [203, 325, 359, 358] },
-    { text: '871X', box: [203, 358, 359, 391] },
-    { text: '6712', box: [203, 391, 359, 424] }
+    { text: '6714', box: [203, 325, 403, 358] },
+    { text: '871X', box: [203, 358, 403, 391] },
+    { text: '6712', box: [203, 391, 403, 424] }
   ];
   const c = client(async (url, opts) => {
     sent = JSON.parse(opts.body);
