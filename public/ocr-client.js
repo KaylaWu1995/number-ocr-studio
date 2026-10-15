@@ -164,8 +164,12 @@ async function request(path, options) {
       if (/^dashscope/.test(cfg.provider) && /ocr/i.test(cfg.model)) cfg.model = 'qwen-vl-max';
       const selection = window.OCRSelection;
       const dimensions = Number.isInteger(body.width) && Number.isInteger(body.height) && body.width > 0 && body.height > 0 ? { width: body.width, height: body.height } : null;
-      const out = await call(cfg, body.image, dimensions ? selection.regionPrompt(body.width, body.height) : selection.REGION_PROMPT, opts.signal);
-      return json({ ok: true, groups: selection.parseRegions(out.text, dimensions), model: cfg.model });
+      // Qwen3 VL returns its native 0-1000 visual-grounding coordinates even when asked
+      // for source-image pixels. Scaling those a second time compresses boxes on tall images.
+      const normalizedRegions = /^qwen3-vl(?:-|$)/i.test(cfg.model);
+      const prompt = dimensions && !normalizedRegions ? selection.regionPrompt(body.width, body.height) : selection.REGION_PROMPT;
+      const out = await call(cfg, body.image, prompt, opts.signal);
+      return json({ ok: true, groups: selection.parseRegions(out.text, normalizedRegions ? null : dimensions), model: cfg.model });
     }
     if (path === '/api/ocr') return json(Object.assign({ ok: true }, await call(cfg, body.image, body.prompt, opts.signal)));
     return json({ error: '未知操作' }, 404);
