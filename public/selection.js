@@ -10,7 +10,7 @@
     '按原图实际空隙和布局分组，不得将连续长数字猜测拆分。不同位置的重复号码分别返回。',
     '忽略金额、序号、备注和等号右边的结果。大括号不是数字，不能识别为 3、2、1。',
     'box 为完整号码的 [左,上,右,下]，以整张图片左上角为原点，横纵坐标均归一化到 0—1000。',
-    '框须覆盖全部笔画并尽量贴合，不能包含相邻号码或备注。没有号码则 groups 为空数组。'
+    '框须覆盖全部笔画并紧贴数字最上、最下、最左、最右的笔画，只留极少空白；不得包含行距、相邻号码或备注，相邻号码框不得重叠。没有号码则 groups 为空数组。'
   ].join('\n');
 
   function regionPrompt(width, height) {
@@ -93,6 +93,29 @@
     }
     return groups;
   }
+
+  function tightenRegions(groups) {
+    return groups.map(function (region, index) {
+      var box = region.box, width = box[2] - box[0], height = box[3] - box[1];
+      var centerY = (box[1] + box[3]) / 2, nearest = Infinity;
+      groups.forEach(function (other, otherIndex) {
+        if (otherIndex === index) return;
+        var candidate = other.box, otherHeight = candidate[3] - candidate[1];
+        var overlapX = Math.min(box[2], candidate[2]) - Math.max(box[0], candidate[0]);
+        if (overlapX < Math.min(width, candidate[2] - candidate[0]) * 0.5) return;
+        var gap = Math.abs(centerY - (candidate[1] + candidate[3]) / 2);
+        // Ignore near-duplicate detections instead of letting them collapse a valid row.
+        if (gap < Math.min(height, otherHeight) * 0.45) return;
+        nearest = Math.min(nearest, gap);
+      });
+      if (!Number.isFinite(nearest)) return region;
+      // Dense rows often arrive with boxes as tall as the whole line pitch. Preserve
+      // the center while reserving 18% of the pitch for visible separation.
+      var targetHeight = Math.max(height * 0.6, Math.min(height, nearest * 0.82));
+      if (targetHeight >= height - 0.01) return region;
+      return Object.assign({}, region, { box: [box[0], centerY - targetHeight / 2, box[2], centerY + targetHeight / 2] });
+    });
+  }
   // Slab intersection includes the whole segment so fast drags cannot skip groups.
   function intersects(a, b, r) {
     var lo = 0, hi = 1;
@@ -107,5 +130,5 @@
     }
     return true;
   }
-  return { parseRegions: parseRegions, intersects: intersects, requestRegions: requestRegions, REGION_PROMPT: REGION_PROMPT, regionPrompt: regionPrompt };
+  return { parseRegions: parseRegions, tightenRegions: tightenRegions, intersects: intersects, requestRegions: requestRegions, REGION_PROMPT: REGION_PROMPT, regionPrompt: regionPrompt };
 });

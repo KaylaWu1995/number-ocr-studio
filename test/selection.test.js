@@ -76,6 +76,21 @@ test('兼容视觉模型的五值中心框、bbox_2d、字符串和归一化坐�
   assert.deepEqual(normalized[0].box, [600, 700, 800, 900]);
 });
 
+test('密集号码框按相邻行距收紧上下留白，不移动中心或影响相邻列', () => {
+  const { tightenRegions } = require('../public/selection');
+  const groups = [
+    { text: '6714', box: [200, 100, 360, 140] },
+    { text: '871X', box: [200, 135, 360, 175] },
+    { text: '6712', box: [200, 170, 360, 210] },
+    { text: '9214', box: [500, 100, 620, 140] }
+  ];
+  const out = tightenRegions(groups);
+  assert.equal((out[0].box[1] + out[0].box[3]) / 2, 120);
+  assert.ok(out[0].box[3] - out[0].box[1] < 30);
+  assert.ok(out[0].box[3] < out[1].box[1]);
+  assert.deepEqual(out[3].box, groups[3].box);
+});
+
 test('有号码但无法解释的坐标不能伪装为没有合规号码', () => {
   assert.throws(() => parseRegions(JSON.stringify({ groups: [{ text: '1439', box: [1, 2, 3] }] })), /位置格式无法使用/);
   assert.throws(() => parseRegions(JSON.stringify({ groups: [{ text: '1439 全倒各2角', x: 528, y: 168, width: 250, height: 71 }] })), /备注/);

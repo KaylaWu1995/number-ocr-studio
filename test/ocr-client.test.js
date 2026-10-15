@@ -41,7 +41,11 @@ test('region OCR sends only user credential to configured host, parses dimension
 
 test('Qwen3 VL 定位框保持模型的 0-1000 坐标，不按竖图高度重复压缩', async () => {
   let sent;
-  const groups = [{ text: '6714', box: [203, 325, 359, 358] }, { text: '9214', box: [203, 820, 359, 853] }];
+  const groups = [
+    { text: '6714', box: [203, 325, 359, 358] },
+    { text: '871X', box: [203, 358, 359, 391] },
+    { text: '6712', box: [203, 391, 359, 424] }
+  ];
   const c = client(async (url, opts) => {
     sent = JSON.parse(opts.body);
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ groups }) } }] }));
@@ -49,7 +53,9 @@ test('Qwen3 VL 定位框保持模型的 0-1000 坐标，不按竖图高度重复
   await c.request('/api/config', post({ model: 'qwen3-vl-plus', apiKey: 'test-only-secret' }));
   const result = await (await c.request('/api/ocr/regions', post({ image: 'test', width: 1080, height: 1920 }))).json();
   assert.equal(result.ok, true);
-  assert.deepEqual(JSON.parse(JSON.stringify(result.groups.map(g => g.box))), groups.map(g => g.box));
+  assert.deepEqual(result.groups.map(g => (g.box[1] + g.box[3]) / 2), groups.map(g => (g.box[1] + g.box[3]) / 2));
+  assert.ok(result.groups.every(g => g.box[3] - g.box[1] < 28));
+  assert.ok(result.groups[0].box[3] < result.groups[1].box[1]);
   const prompt = sent.messages[0].content[1].text;
   assert.match(prompt, /归一化到 0—1000/);
   assert.doesNotMatch(prompt, /原图像素坐标/);
