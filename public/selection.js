@@ -10,7 +10,7 @@
     '按原图实际空隙和布局分组，不得将连续长数字猜测拆分。不同位置的重复号码分别返回。',
     '忽略金额、序号、备注和等号右边的结果。大括号不是数字，不能识别为 3、2、1。',
     'box 为完整号码的 [左,上,右,下]，以整张图片左上角为原点，横纵坐标均归一化到 0—1000。',
-    '框须覆盖全部笔画并紧贴数字最上、最下、最左、最右的笔画，只留极少空白；不得包含行距、相邻号码或备注，相邻号码框不得重叠。没有号码则 groups 为空数组。'
+    '框须覆盖全部笔画并紧贴数字最上、最下、最左、最右的笔画，只留极少空白；尤其右边界必须停在号码最后一位的最后笔画处，不得包含等号、金额或备注。不得包含行距或相邻号码，相邻号码框不得重叠。没有号码则 groups 为空数组。'
   ].join('\n');
 
   function regionPrompt(width, height) {
@@ -94,7 +94,9 @@
     return groups;
   }
 
-  function tightenRegions(groups) {
+  function tightenRegions(groups, dimensions) {
+    var scaleX = dimensions ? dimensions.width / 1000 : 1;
+    var scaleY = dimensions ? dimensions.height / 1000 : 1;
     return groups.map(function (region, index) {
       var box = region.box, width = box[2] - box[0], height = box[3] - box[1];
       var centerY = (box[1] + box[3]) / 2, nearest = Infinity;
@@ -112,8 +114,14 @@
       // Dense rows often arrive with boxes as tall as the whole line pitch. Preserve
       // the center while reserving 18% of the pitch for visible separation.
       var targetHeight = Math.max(height * 0.6, Math.min(height, nearest * 0.82));
-      if (targetHeight >= height - 0.01) return region;
-      return Object.assign({}, region, { box: [box[0], centerY - targetHeight / 2, box[2], centerY + targetHeight / 2] });
+      // Four handwritten characters are normally at most about three times as wide
+      // as their ink height (three characters are narrower). Keep the reliable left
+      // edge and trim only the right edge where =N and notes are commonly included.
+      var maxAspect = region.text.length === 3 ? 2.2 : 2.7;
+      var aspectWidth = targetHeight * scaleY * maxAspect / scaleX;
+      var targetWidth = Math.max(width * 0.55, Math.min(width, aspectWidth));
+      if (targetHeight >= height - 0.01 && targetWidth >= width - 0.01) return region;
+      return Object.assign({}, region, { box: [box[0], centerY - targetHeight / 2, box[0] + targetWidth, centerY + targetHeight / 2] });
     });
   }
   // Slab intersection includes the whole segment so fast drags cannot skip groups.

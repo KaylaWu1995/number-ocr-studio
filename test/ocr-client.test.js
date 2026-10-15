@@ -56,6 +56,7 @@ test('Qwen3 VL 定位框保持模型的 0-1000 坐标，不按竖图高度重复
   assert.deepEqual(result.groups.map(g => (g.box[1] + g.box[3]) / 2), groups.map(g => (g.box[1] + g.box[3]) / 2));
   assert.ok(result.groups.every(g => g.box[3] - g.box[1] < 28));
   assert.ok(result.groups[0].box[3] < result.groups[1].box[1]);
+  assert.ok(result.groups.every((g, i) => g.box[0] === groups[i].box[0] && g.box[2] < groups[i].box[2]));
   const prompt = sent.messages[0].content[1].text;
   assert.match(prompt, /归一化到 0—1000/);
   assert.doesNotMatch(prompt, /原图像素坐标/);

@@ -170,7 +170,7 @@ async function request(path, options) {
       const prompt = dimensions && !normalizedRegions ? selection.regionPrompt(body.width, body.height) : selection.REGION_PROMPT;
       const out = await call(cfg, body.image, prompt, opts.signal);
       let groups = selection.parseRegions(out.text, normalizedRegions ? null : dimensions);
-      if (normalizedRegions) groups = selection.tightenRegions(groups);
+      if (normalizedRegions) groups = selection.tightenRegions(groups, dimensions);
       return json({ ok: true, groups, model: cfg.model });
     }
     if (path === '/api/ocr') return json(Object.assign({ ok: true }, await call(cfg, body.image, body.prompt, opts.signal)));
